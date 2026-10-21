@@ -13,8 +13,8 @@ android {
         applicationId = "com.nog.quotesapp"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -63,4 +63,14 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+// Run exportDebugApk for an installable APK named after the app and version.
+tasks.register<Copy>("exportDebugApk") {
+    dependsOn("assembleDebug")
+    from(layout.buildDirectory.dir("outputs/apk/debug")) {
+        include("*.apk")
+        rename { "Random Quotes App V${android.defaultConfig.versionCode}.apk" }
+    }
+    into(layout.buildDirectory.dir("outputs/apk/named"))
 }

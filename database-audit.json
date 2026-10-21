@@ -1,0 +1,146 @@
+{
+  "device": "emulator-5554",
+  "package": "com.nog.quotesapp",
+  "stable_capture": true,
+  "databases": [
+    {
+      "name": "quotes_database",
+      "integrity": [
+        "ok"
+      ],
+      "foreign_key_violations": [],
+      "user_version": 1,
+      "journal_mode": "wal",
+      "tables": {
+        "android_metadata": [
+          {
+            "locale": "en_US"
+          }
+        ],
+        "quote_fifo": [],
+        "quote_tags_cross_ref": [
+          {
+            "quoteId": 9,
+            "tagId": 1
+          },
+          {
+            "quoteId": 10,
+            "tagId": 1
+          }
+        ],
+        "quotes": [
+          {
+            "id": 9,
+            "text": "“Coca cola só vendeu 25 garrafas no primeiro ano. Nunca desista”"
+          },
+          {
+            "id": 10,
+            "text": "\"Ao invés de pensarmos que não conseguimos fazer isso agora, é melhor pensarmos que podemos, e pensar como faríamos isso\""
+          }
+        ],
+        "room_master_table": [
+          {
+            "id": 42,
+            "identity_hash": "e3493fd85dc26a709039b7ec2c37bf96"
+          }
+        ],
+        "sqlite_sequence": [
+          {
+            "name": "quotes",
+            "seq": 10
+          },
+          {
+            "name": "tags",
+            "seq": 1
+          }
+        ],
+        "tags": [
+          {
+            "id": 1,
+            "name": "Business"
+          }
+        ]
+      },
+      "duplicate_quotes_exact": [],
+      "duplicate_quotes_normalized": [],
+      "duplicate_tags_exact": [],
+      "duplicate_tags_normalized": [],
+      "duplicate_links": [],
+      "empty_quotes": [],
+      "empty_tags": [],
+      "orphan_fifo": [],
+      "schema": [
+        {
+          "name": "sqlite_autoindex_quote_tags_cross_ref_1",
+          "type": "index",
+          "sql": null
+        },
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "sql": "CREATE TABLE android_metadata (locale TEXT)"
+        },
+        {
+          "name": "quote_fifo",
+          "type": "table",
+          "sql": "CREATE TABLE `quote_fifo` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `quoteId` INTEGER NOT NULL, `insertedAt` INTEGER NOT NULL)"
+        },
+        {
+          "name": "quote_tags_cross_ref",
+          "type": "table",
+          "sql": "CREATE TABLE `quote_tags_cross_ref` (`quoteId` INTEGER NOT NULL, `tagId` INTEGER NOT NULL, PRIMARY KEY(`quoteId`, `tagId`), FOREIGN KEY(`quoteId`) REFERENCES `quotes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`tagId`) REFERENCES `tags`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+        },
+        {
+          "name": "quotes",
+          "type": "table",
+          "sql": "CREATE TABLE `quotes` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `text` TEXT NOT NULL)"
+        },
+        {
+          "name": "room_master_table",
+          "type": "table",
+          "sql": "CREATE TABLE room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)"
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "sql": "CREATE TABLE sqlite_sequence(name,seq)"
+        },
+        {
+          "name": "tags",
+          "type": "table",
+          "sql": "CREATE TABLE `tags` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL)"
+        }
+      ],
+      "readable_links": [
+        {
+          "quoteId": 9,
+          "text": "“Coca cola só vendeu 25 garrafas no primeiro ano. Nunca desista”",
+          "tagId": 1,
+          "name": "Business"
+        },
+        {
+          "quoteId": 10,
+          "text": "\"Ao invés de pensarmos que não conseguimos fazer isso agora, é melhor pensarmos que podemos, e pensar como faríamos isso\"",
+          "tagId": 1,
+          "name": "Business"
+        }
+      ],
+      "duplicate_quotes_unicode_normalized": [],
+      "duplicate_tags_unicode_normalized": []
+    }
+  ],
+  "captured_at": "2026-10-21T03:29:11.476045-03:00",
+  "scope": "App-local databases for com.nog.quotesapp on emulator-5554; source data unchanged",
+  "mobile_review": {
+    "observed_android_api": 34,
+    "configured_min_sdk": 24,
+    "assessment": "Suitable for local Android storage; only the connected emulator was inspected, not physical devices or all supported API levels.",
+    "findings": [
+      "quote_tags_cross_ref lacks an index starting with tagId; deleting tags can scan the full link table.",
+      "quote_fifo has no foreign key to quotes; future quote deletion could leave orphan history rows.",
+      "No explicit migrations or schema export directory are configured; plan a migration before changing the schema.",
+      "Quote text and tag names are not unique; future duplicate content remains possible despite none being present now.",
+      "The list screens currently load all rows; consider paging if the database becomes large."
+    ]
+  }
+}

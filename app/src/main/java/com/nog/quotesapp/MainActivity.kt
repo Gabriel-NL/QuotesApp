@@ -29,7 +29,9 @@ class MainActivity : ComponentActivity() {
 
                 val navController = rememberNavController()
                 val currentEntry by navController.currentBackStackEntryAsState()
-                val entryScreen = currentEntry?.destination?.route == "create_quote"
+                val entryScreen = currentEntry?.destination?.route.let {
+                    it == "create_quote" || it == "edit_quote/{quoteId}"
+                }
 
                 Scaffold(
 

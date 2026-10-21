@@ -14,21 +14,24 @@ import com.nog.quotesapp.data.db.DatabaseProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.catch
 
+const val MAX_QUOTE_LENGTH = 5000
+
 @Composable
 fun CreateQuoteScreen(
     onCreate: (String, List<Int>) -> Unit,
     onBack: () -> Unit,
     initialText: String = "",
+    initialTagIds: List<Int> = emptyList(),
     isEditing: Boolean = false,
     saving: Boolean = false,
     error: String? = null
 ) {
     var text by rememberSaveable(initialText) { mutableStateOf(initialText) }
-    var selectedTagIds by rememberSaveable { mutableStateOf(emptyList<Int>()) }
+    var selectedTagIds by rememberSaveable(initialTagIds) { mutableStateOf(initialTagIds) }
     var confirmExit by remember { mutableStateOf(false) }
     val requestBack = {
         if (!saving) {
-            if (text != initialText || selectedTagIds.isNotEmpty()) confirmExit = true
+            if (text != initialText || selectedTagIds.toSet() != initialTagIds.toSet()) confirmExit = true
             else onBack()
         }
     }
@@ -51,12 +54,13 @@ fun CreateQuoteScreen(
         OutlinedTextField(
             value = text,
             onValueChange = {
-                text = it.replace("\r", "").replace("\n", " ")
+                text = it.replace("\r", "").replace("\n", " ").take(MAX_QUOTE_LENGTH)
             },
             label = { Text("Quote") },
             enabled = !saving,
             singleLine = false,
             minLines = 4,
+            supportingText = { Text("${text.length}/$MAX_QUOTE_LENGTH") },
             modifier = Modifier.fillMaxWidth()
 
         )
@@ -81,7 +85,7 @@ fun CreateQuoteScreen(
 
             Button(onClick = {
                 text = initialText
-                selectedTagIds = emptyList()
+                selectedTagIds = initialTagIds
             }, enabled = !saving) {
                 Text(if (isEditing) "Reset" else "Clear")
             }

@@ -28,6 +28,9 @@ interface QuoteDao
     @Query("SELECT * FROM quotes")
     suspend fun getAll(): List<QuoteEntity>
 
+    @Query("SELECT * FROM quotes WHERE id = :id")
+    suspend fun getById(id: Int): QuoteEntity?
+
     @Query("SELECT * FROM quotes ORDER BY text COLLATE NOCASE, id")
     fun observeAll(): Flow<List<QuoteEntity>>
 

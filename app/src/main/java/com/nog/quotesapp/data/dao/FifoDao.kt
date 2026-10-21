@@ -22,4 +22,7 @@ interface FifoDao
 
     @Query("SELECT * FROM quote_fifo")
     suspend fun getAll(): List<FifoEntity>
+
+    @Query("DELETE FROM quote_fifo WHERE quoteId = :quoteId")
+    suspend fun deleteForQuote(quoteId: Int)
 }

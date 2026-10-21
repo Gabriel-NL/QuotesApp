@@ -59,4 +59,55 @@ class QuoteCreationTest {
         assertTrue(db.quoteTagCrossRefDao().getAll().isEmpty())
         assertTrue(db.tagDao().exists(tagId))
     }
+    @Test
+    fun editReplacesLinksWithoutChangingId() = runBlocking {
+        val oldTag = db.tagDao().insert(TagEntity(name = "Old")).toInt()
+        val newTag = db.tagDao().insert(TagEntity(name = "New")).toInt()
+        val repo = QuoteRepository(db)
+        val id = repo.createQuote("Before", listOf(oldTag)).toInt()
+        repo.updateQuote(id, "After", listOf(newTag))
+        assertEquals("After", db.quoteDao().getById(id)?.text)
+        assertEquals(listOf(newTag), db.quoteTagCrossRefDao().getAll().map { it.tagId })
+        assertEquals(1, db.quoteDao().getAll().size)
+    }
+
+    @Test
+    fun failedEditPreservesOriginalTextAndLinks() = runBlocking {
+        val tag = db.tagDao().insert(TagEntity(name = "Kept")).toInt()
+        val repo = QuoteRepository(db)
+        val id = repo.createQuote("Before", listOf(tag)).toInt()
+        var failed = false
+        try { repo.updateQuote(id, "After", listOf(Int.MAX_VALUE)) }
+        catch (exception: Exception) { failed = true }
+        assertTrue(failed)
+        assertEquals("Before", db.quoteDao().getById(id)?.text)
+        assertEquals(listOf(tag), db.quoteTagCrossRefDao().getAll().map { it.tagId })
+    }
+
+    @Test
+    fun bulkDeleteCleansLinksAndHistoryButKeepsTags() = runBlocking {
+        val tag = db.tagDao().insert(TagEntity(name = "Kept")).toInt()
+        val repo = QuoteRepository(db)
+        val first = repo.createQuote("First", listOf(tag)).toInt()
+        val second = repo.createQuote("Second", listOf(tag)).toInt()
+        val kept = repo.createQuote("Kept", emptyList()).toInt()
+        db.fifoDao().insert(com.nog.quotesapp.data.entity.FifoEntity(quoteId = first, insertedAt = 1))
+        repo.deleteQuotes(listOf(first, second))
+        assertEquals(listOf(kept), db.quoteDao().getAll().map { it.id })
+        assertTrue(db.quoteTagCrossRefDao().getAll().isEmpty())
+        assertTrue(db.fifoDao().getAll().isEmpty())
+        assertTrue(db.tagDao().exists(tag))
+    }
+
+    @Test
+    fun renamingTagKeepsQuoteLinksAndDeletingTagKeepsQuote() = runBlocking {
+        val tag = db.tagDao().insert(TagEntity(name = "Before")).toInt()
+        val quote = QuoteRepository(db).createQuote("Keep me", listOf(tag)).toInt()
+        db.tagDao().updateTagNameUsingId(tag, "After")
+        assertEquals("After", db.tagDao().getById(tag)?.name)
+        assertEquals(tag, db.quoteTagCrossRefDao().getAll().single().tagId)
+        db.tagDao().deleteById(tag)
+        assertTrue(db.quoteTagCrossRefDao().getAll().isEmpty())
+        assertNotNull(db.quoteDao().getById(quote))
+    }
 }

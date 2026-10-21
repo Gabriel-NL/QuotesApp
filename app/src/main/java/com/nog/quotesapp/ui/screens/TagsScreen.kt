@@ -1,6 +1,10 @@
-﻿package com.nog.quotesapp.ui.screens
+package com.nog.quotesapp.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.activity.compose.BackHandler
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -18,6 +22,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
+const val MAX_TAG_NAME_LENGTH = 100
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TagsScreen() {
     val context = LocalContext.current.applicationContext
@@ -44,7 +51,12 @@ fun TagsScreen() {
     var tagName by rememberSaveable { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
     var editorError by remember { mutableStateOf<String?>(null) }
-    val visibleTags = tags.filter { it.name.contains(query.trim(), ignoreCase = true) }
+    var debouncedQuery by remember { mutableStateOf(query) }
+    LaunchedEffect(query) { delay(200); debouncedQuery = query }
+    val visibleTags = rankEntries(tags, debouncedQuery) { it.name }
+    BackHandler(enabled = selectionMode && !showEditor && pendingDelete.isEmpty()) {
+        selectionMode = false; selected = emptyList()
+    }
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Tags", style = MaterialTheme.typography.headlineMedium)
@@ -71,7 +83,11 @@ fun TagsScreen() {
         else if (visibleTags.isEmpty()) Text(if (query.isBlank()) "No tags yet." else "No matching tags.")
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(visibleTags, key = { it.id }) { tag ->
-                Card(Modifier.fillMaxWidth()) {
+                Card(Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = {
+                    if (!selectionMode) {
+                        editingId = tag.id; tagName = tag.name; editorError = null; showEditor = true
+                    }
+                })) {
                     Row(Modifier.padding(12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         if (selectionMode) Checkbox(checked = tag.id in selected, onCheckedChange = { checked ->
                             selected = if (checked) selected + tag.id else selected - tag.id
@@ -98,7 +114,7 @@ fun TagsScreen() {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = tagName,
-                    onValueChange = { tagName = it.replace("\r", "").replace("\n", " ") },
+                    onValueChange = { tagName = it.replace("\r", "").replace("\n", " ").take(MAX_TAG_NAME_LENGTH) },
                     label = { Text("Tag name") },
                     singleLine = true,
                     enabled = !saving
@@ -135,7 +151,7 @@ fun TagsScreen() {
     if (pendingDelete.isNotEmpty()) AlertDialog(
         onDismissRequest = { if (!deleting) pendingDelete = emptyList() },
         title = { Text("Delete ${pendingDelete.size} tag(s)?") },
-        text = { Text("Their links to quotes will also be removed. The quotes themselves will be kept.") },
+        text = { Column { Text("Their links to quotes will also be removed. The quotes themselves will be kept."); error?.let { Text(it) } } },
         confirmButton = {
             TextButton(enabled = !deleting, onClick = {
                 val ids = pendingDelete.toList()

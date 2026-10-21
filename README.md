@@ -1,8 +1,21 @@
-# QuotesApp: understanding the current code from Unity
+# Random Quotes App: understanding the current code from Unity
 
 This project is an Android quote app written in Kotlin, with Jetpack Compose for the interface and Room for local storage. At present, it has a working navigation structure, prototype screens, and database code. **The Tags and Quotes lists read from Room.** Quote creation saves the quote and selected tag links together. Home still displays a placeholder daily quote.
 
 This guide describes the checked-in source as it currently exists. The desired behavior is recorded separately in [Recovered requirements.txt](Recovered%20requirements.txt). No app code was changed while writing this guide, and the app was not built or run for this review.
+
+
+## V2 update
+
+The app is now named **Random Quotes App**, version 2.0 (version code 2). Quotes and Tags have debounced, case-insensitive search: whole search-phrase matches first, individual-word matches next, then other entries; each tier is alphabetically ordered. Search reorders the in-memory list rather than deleting or hiding unmatched text records. Quote tag filters hide records using all included tags first, followed by exclusions.
+
+Quotes supports Create, Edit, long-press editing, single deletion, and checkbox-only bulk deletion with confirmation. Tag filtering cycles Any / Include / Exclude. Quote editing loads text and tag IDs, saves both in one transaction, supports Reset, and confirms leaving with an unsaved draft. Deleting quotes cleans links and FIFO history. Quotes are limited to 5,000 characters; tag names to 100. Tags keeps popup creation/editing, ID-based associations, search, long-press editing, single deletion, and bulk deletion. No custom tag colors are stored.
+
+`QuoteEditorScreen.kt` coordinates database loading and saving; `CreateQuoteScreen.kt` draws the form. `QuoteSearch.kt` holds shared search ranking and tag-match logic. The database schema remains version 1; this update does not replace existing user data.
+
+Build a debug-signed, installable APK with `./gradlew.bat :app:exportDebugApk`. It writes `app/build/outputs/apk/named/Random Quotes App V2.apk`. The export filename follows the app version code on future builds.
+
+Home's daily-quote selection/reroll/search, widgets, and Settings remain future work; the V2 scope is the Quotes and Tags screens. The earlier walkthrough below documents the project as it was originally reviewed; where it describes unfinished Quotes/Tags actions, this V2 section supersedes it.
 
 ## 1. Translate the main ideas into Unity terms
 
