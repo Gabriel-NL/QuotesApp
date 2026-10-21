@@ -1,0 +1,89 @@
+1. Sistema de frase do dia
+   1.1. A frase exibida no topo do app será selecionada uma vez por dia em horário fixo (meia-noite)
+   1.2. A frase do dia deve ser consistente entre app e widget, usando a mesma fonte de dados
+   1.3. O widget será atualizado via background service sempre que a frase do dia mudar ou for reconfigurada manualmente
+
+2. Seleção aleatória de frases
+   2.1. A seleção aleatória deve ocorrer com base em todas as frases disponíveis no banco de dados
+   2.2. Deve existir um cache das últimas frases exibidas para evitar repetição, com tamanho configurável por variável
+   2.2.1. Se o tamanho do cache for maior ou igual ao número de frases disponíveis, o sistema deve ajustar automaticamente para entryCount - 1
+   2.2.2. Se não existirem frases (entryCount = 0), o sistema não deve funcionar e a UI deve indicar estado vazio com aparência desativada (acinzentada)
+   2.3. A lista de frases deve ser carregada do banco de dados para a memória RAM no início do app
+
+3. Sistema de busca
+   3.1. A busca será composta por três etapas sequenciais
+   3.1.1. Primeira etapa: correspondência por frase exata. Resultados devem ser exibidos em ordem alfabética
+   3.1.2. Segunda etapa: correspondência por palavras individuais contidas na busca. Também ordenada alfabeticamente
+   3.1.3. Terceira etapa: demais resultados que não se encaixam nas etapas anteriores, também ordenados alfabeticamente
+   3.1.4. A exibição final concatena as três etapas na ordem definida acima
+   3.1.5. O sistema deve reordenar os resultados a cada alteração no texto da barra de busca (qualquer input, delete, paste ou modificação)
+   3.1.6. A lista de exibição não remove dados, apenas oculta itens que não atendem ao filtro atual
+   3.2. A estrutura de regras de busca deve ser modular para permitir alteração futura das regras de prioridade
+   3.3. Deve existir debounce na entrada de texto para evitar execução excessiva da lógica de busca
+   3.4. A lista completa permanece carregada na RAM, e apenas a UI aplica filtros visuais
+
+4. Estrutura de exibição de frases
+   4.1. Cada frase será exibida como um label em uma lista scrollável
+   4.1.1. Se o texto exceder a largura disponível, ele não deve quebrar linha, devendo ser truncado com reticências (...)
+   4.1.2. O comportamento de truncamento deve ser substituível no futuro
+   4.2. Ao segurar um item da lista, o usuário será redirecionado para a tela de edição da frase correspondente, usando o ID da frase
+   4.3. O layout de cada item não pode ser clicável para seleção múltipla por padrão (exceto em modo específico de gerenciamento)
+
+5. Tela de criação e edição de frases
+   5.1. A tela contém um campo de entrada de texto de linha única com limite de caracteres definido por constante
+   5.1.1. Se a tela for aberta sem ID, o campo inicia vazio (modo criação)
+   5.1.2. Se a tela for aberta com ID, o campo carrega o conteúdo da frase correspondente no banco de dados
+   5.2. A tela possui três botões na parte inferior
+   5.2.1. Botão “voltar” retorna à tela anterior
+   5.2.2. Botão “criar/salvar” muda dinamicamente: “criar” se não houver ID, “salvar” se houver ID
+   5.2.3. Botão “limpar/resetar” muda dinamicamente: limpa campo no modo criação ou restaura versão original do banco no modo edição
+   5.2.4. Alterações só são persistidas ao clicar em salvar/criar
+   5.2.5. Caso o usuário tente sair com alterações não salvas, deve ser exibido aviso de confirmação
+   5.3. Existe um botão acima do input para gerenciamento de tags
+   5.3.1. Ao abrir a tela com ID, as tags associadas são carregadas e exibidas como ativas
+   5.3.2. Tags ativas são exibidas em verde, tags inativas em cor padrão
+
+6. Navegação
+   6.1. O app possui uma navbar com acesso às telas:
+   6.1.1. Página inicial (quote do dia + busca)
+   6.1.2. Lista de frases
+   6.1.3. Gerenciamento de tags
+   6.2. A tela de edição de frases não possui navbar
+
+7. Tela de lista de frases
+   7.1. A tela contém estrutura semelhante à página inicial, mas sem “quote do dia”
+   7.1.1. Possui botões superiores:
+   7.1.1.1. Criar entrada
+   7.1.1.2. Apagar múltiplos
+   7.1.2. O botão de apagar múltiplos ativa um modo especial de seleção
+   7.1.2.1. No modo de seleção múltipla, a lista exibe checkboxes ao lado dos itens
+   7.1.2.2. Os itens só podem ser selecionados via checkbox, não via clique no texto
+   7.1.2.3. Ao ativar esse modo, a barra de ações muda para:
+   7.1.2.3.1. Cancelar (desativa modo e limpa seleção)
+   7.1.2.3.2. Apagar selecionados (abre confirmação antes de excluir)
+   7.1.2.4. Ao sair do modo, qualquer seleção existente é descartada
+   7.2. Cada item da lista possui dois botões na direita
+   7.2.1. Botão de lixeira: abre popup de confirmação para exclusão da frase
+   7.2.2. Botão de edição: abre tela de edição da frase com ID correspondente
+   7.3. A barra de busca possui um botão “tags” ao lado
+   7.3.1. O botão abre um painel/popup com lista de tags selecionáveis
+   7.3.2. Cada tag pode estar em três estados: padrão, verde (inclusão), vermelho (exclusão)
+   7.3.2.1. Tags verdes filtram para mostrar apenas frases que contêm essas tags
+   7.3.2.2. Tags vermelhas removem frases que contenham essas tags
+   7.3.2.3. O filtro final aplica inclusão primeiro e depois exclusão
+
+8. Gerenciamento de tags
+   8.1. A tela permite criar e editar tags através de popup com input de texto
+   8.1.1. Tags são identificadas por ID, não pelo nome
+   8.1.2. Alterações no nome da tag são refletidas diretamente no banco de dados sem necessidade de reprocessar frases manualmente
+   8.2. A tela possui estrutura semelhante à lista de frases, adaptada para entidades de tags
+
+9. Estrutura de banco de dados
+   9.1. Tabela de frases: id (primary key), phrase (string)
+   9.2. Tabela de tags: id (primary key), tag (string)
+   9.3. Tabela de relacionamento: id (primary key), phrase_id (foreign key), tag_id (foreign key)
+
+10. Plataforma e arquitetura
+    10.1. O app será desenvolvido em Android Studio utilizando Kotlin e Jetpack Compose
+    10.2. O código será organizado em arquivos e classes separados por responsabilidade (UI, lógica, dados)
+    10.3. A arquitetura deve permitir expansão futura sem acoplamento direto entre UI e banco de dados
