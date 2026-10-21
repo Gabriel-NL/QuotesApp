@@ -29,17 +29,19 @@
    4.2. Ao segurar um item da lista, o usuário será redirecionado para a tela de edição da frase correspondente, usando o ID da frase
    4.3. O layout de cada item não pode ser clicável para seleção múltipla por padrão (exceto em modo específico de gerenciamento)
 
-5. Tela de criação e edição de frases
-   5.1. A tela contém um campo de entrada de texto de linha única com limite de caracteres definido por constante
+5. Tela de criação e edição de frases (CreateQuoteScreen)
+   5.0. A tela é dedicada a frases; a criação e edição de tags utiliza popup na tela de gerenciamento de tags
+   5.0.1. O contexto recebido informa, opcionalmente, o ID da frase; o título indica “Criar frase” ou “Editar frase” conforme o contexto
+   5.1. O campo de texto possui limite de caracteres definido por constante
    5.1.1. Se a tela for aberta sem ID, o campo inicia vazio (modo criação)
-   5.1.2. Se a tela for aberta com ID, o campo carrega o conteúdo da frase correspondente no banco de dados
+   5.1.2. Se a tela for aberta com ID, o campo carrega o texto da frase correspondente no banco de dados
    5.2. A tela possui três botões na parte inferior
    5.2.1. Botão “voltar” retorna à tela anterior
    5.2.2. Botão “criar/salvar” muda dinamicamente: “criar” se não houver ID, “salvar” se houver ID
    5.2.3. Botão “limpar/resetar” muda dinamicamente: limpa campo no modo criação ou restaura versão original do banco no modo edição
    5.2.4. Alterações só são persistidas ao clicar em salvar/criar
    5.2.5. Caso o usuário tente sair com alterações não salvas, deve ser exibido aviso de confirmação
-   5.3. Existe um botão acima do input para gerenciamento de tags
+   5.3. A tela de frases possui um controle para selecionar tags existentes
    5.3.1. Ao abrir a tela com ID, as tags associadas são carregadas e exibidas como ativas
    5.3.2. Tags ativas são exibidas em verde, tags inativas em cor padrão
 
@@ -48,12 +50,12 @@
    6.1.1. Página inicial (quote do dia + busca)
    6.1.2. Lista de frases
    6.1.3. Gerenciamento de tags
-   6.2. A tela de edição de frases não possui navbar
+   6.2. A tela de criação e edição de frases não possui navbar nem botão próprio na navbar; ela é acessada pelas ações de criar ou editar frases. Criar e editar tags abre um popup sobre a lista de tags
 
 7. Tela de lista de frases
    7.1. A tela contém estrutura semelhante à página inicial, mas sem “quote do dia”
    7.1.1. Possui botões superiores:
-   7.1.1.1. Criar entrada
+   7.1.1.1. Criar frase: abre CreateQuoteScreen sem ID
    7.1.1.2. Apagar múltiplos
    7.1.2. O botão de apagar múltiplos ativa um modo especial de seleção
    7.1.2.1. No modo de seleção múltipla, a lista exibe checkboxes ao lado dos itens
@@ -64,7 +66,7 @@
    7.1.2.4. Ao sair do modo, qualquer seleção existente é descartada
    7.2. Cada item da lista possui dois botões na direita
    7.2.1. Botão de lixeira: abre popup de confirmação para exclusão da frase
-   7.2.2. Botão de edição: abre tela de edição da frase com ID correspondente
+   7.2.2. Botão de edição: abre CreateQuoteScreen com o ID correspondente
    7.3. A barra de busca possui um botão “tags” ao lado
    7.3.1. O botão abre um painel/popup com lista de tags selecionáveis
    7.3.2. Cada tag pode estar em três estados: padrão, verde (inclusão), vermelho (exclusão)
@@ -73,10 +75,12 @@
    7.3.2.3. O filtro final aplica inclusão primeiro e depois exclusão
 
 8. Gerenciamento de tags
-   8.1. A tela permite criar e editar tags através de popup com input de texto
+   8.1. O botão de criar tag abre um popup com campo de nome vazio; a ação de editar abre o mesmo popup com o nome da tag correspondente, identificada por ID
    8.1.1. Tags são identificadas por ID, não pelo nome
    8.1.2. Alterações no nome da tag são refletidas diretamente no banco de dados sem necessidade de reprocessar frases manualmente
    8.2. A tela possui estrutura semelhante à lista de frases, adaptada para entidades de tags
+   8.3. O popup possui Criar/Salvar e Cancelar; alterações só são persistidas ao confirmar. Após salvar com sucesso, o popup fecha e a lista reflete os dados atualizados do banco de dados
+   8.4. Tags possuem nome e ID, sem configuração de cor personalizada
 
 9. Estrutura de banco de dados
    9.1. Tabela de frases: id (primary key), phrase (string)

@@ -7,16 +7,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import com.nog.quotesapp.ui.navigation.NavItem
+import androidx.navigation.NavController
 import com.nog.quotesapp.ui.navigation.Routes
-import com.nog.quotesapp.ui.screens.HomeScreen
-import com.nog.quotesapp.ui.screens.QuotesScreen
-import com.nog.quotesapp.ui.screens.SettingsScreen
-import com.nog.quotesapp.ui.screens.TagsScreen
-import com.nog.quotesapp.ui.screens.testQuotes
+import com.nog.quotesapp.ui.navigation.NavItem
 
 @Composable
 fun BottomNavbar(
@@ -58,35 +51,38 @@ fun BottomNavbar(
 }
 
 @Composable
-fun AppNavigation(
-    navController: NavHostController,
-    modifier: Modifier = Modifier
+fun PreBuiltBottomBar(
+    navController: NavController
 ) {
 
-    NavHost(
+    BottomNavbar(
 
-        navController = navController,
+        buttons = listOf(
 
-        startDestination = Routes.Home.route,
+            NavItem(
+                title = "Home",
+                route = Routes.Home.route
+            ),
 
-        modifier = modifier
+            NavItem(
+                title = "Quotes",
+                route = Routes.Quotes.route
+            ),
 
-    ) {
+            NavItem(
+                title = "Tags",
+                route = Routes.Tags.route
+            ),
 
-        composable(Routes.Home.route) {
-            HomeScreen()
+            NavItem(
+                title = "Settings",
+                route = Routes.Settings.route
+            )
+        ),
+
+        onButtonClick = { item ->
+
+            navController.navigate(item.route)
         }
-
-        composable(Routes.Quotes.route) {
-            QuotesScreen()
-        }
-
-        composable(Routes.Tags.route) {
-            TagsScreen()
-        }
-
-        composable(Routes.Settings.route) {
-            SettingsScreen()
-        }
-    }
+    )
 }

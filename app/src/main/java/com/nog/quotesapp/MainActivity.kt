@@ -10,9 +10,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import com.nog.quotesapp.ui.components.AppNavigation
-import com.nog.quotesapp.ui.navigation.PreBuiltBottomBar
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.nog.quotesapp.ui.navigation.AppNavigation
+import com.nog.quotesapp.ui.components.PreBuiltBottomBar
 import com.nog.quotesapp.ui.theme.MyApplicationTheme
+
 
 var debugText by mutableStateOf("Waiting...")
 class MainActivity : ComponentActivity() {
@@ -26,11 +28,13 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme {
 
                 val navController = rememberNavController()
+                val currentEntry by navController.currentBackStackEntryAsState()
+                val entryScreen = currentEntry?.destination?.route == "create_quote"
 
                 Scaffold(
 
                     bottomBar = {
-                        PreBuiltBottomBar(navController)
+                        if (!entryScreen) PreBuiltBottomBar(navController)
                     }
 
                 ) { paddingValues ->

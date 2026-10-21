@@ -14,27 +14,10 @@ data class QuoteItem(
     val text: String
 )
 
-val testQuotes: List<QuoteItem> = listOf(
-
-    QuoteItem(
-        1,
-        "The obstacle is the way."
-    ),
-
-    QuoteItem(
-        2,
-        "Discipline equals freedom."
-    ),
-
-    QuoteItem(
-        3,
-        "Simplicity is difficult."
-    )
-)
-
 @Composable
 fun QuotesScreen(
-    quotes: List<QuoteItem> = testQuotes,
+    quotes: List<QuoteItem>,
+    error: String? = null,
 
     onCreateClick: () -> Unit = {},
 
@@ -85,7 +68,9 @@ fun QuotesScreen(
         // SEARCH + TAGS
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
@@ -105,7 +90,8 @@ fun QuotesScreen(
             )
 
             Button(
-                onClick = onTagsClick
+                onClick = onTagsClick,
+                modifier = Modifier.fillMaxHeight()
             ) {
                 Text("Tags")
             }
@@ -115,6 +101,11 @@ fun QuotesScreen(
 
         // QUOTES LIST
 
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (quotes.isEmpty() && error == null) {
+            Text("No quotes yet. Create your first quote.")
+        }
+
         LazyColumn(
 
             modifier = Modifier.fillMaxSize(),
@@ -123,7 +114,7 @@ fun QuotesScreen(
 
         ) {
 
-            items(quotes) { quote ->
+            items(quotes, key = { it.id }) { quote ->
 
                 QuoteCard(
 

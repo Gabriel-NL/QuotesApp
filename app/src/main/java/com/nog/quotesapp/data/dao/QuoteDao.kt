@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import com.nog.quotesapp.data.entity.QuoteEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface QuoteDao
@@ -26,6 +27,9 @@ interface QuoteDao
     // READ
     @Query("SELECT * FROM quotes")
     suspend fun getAll(): List<QuoteEntity>
+
+    @Query("SELECT * FROM quotes ORDER BY text COLLATE NOCASE, id")
+    fun observeAll(): Flow<List<QuoteEntity>>
 
     // CLEAR TABLE
     @Query("DELETE FROM quotes")
