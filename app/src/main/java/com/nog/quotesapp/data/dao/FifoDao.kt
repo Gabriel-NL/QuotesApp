@@ -25,4 +25,16 @@ interface FifoDao
 
     @Query("DELETE FROM quote_fifo WHERE quoteId = :quoteId")
     suspend fun deleteForQuote(quoteId: Int)
+
+    @Query("DELETE FROM quote_fifo WHERE quoteId NOT IN (SELECT id FROM quotes)")
+    suspend fun deleteOrphans()
+
+    @Query("SELECT quoteId FROM quote_fifo ORDER BY id DESC LIMIT :limit")
+    suspend fun recentIds(limit: Int): List<Int>
+
+    @Query("DELETE FROM quote_fifo WHERE id NOT IN (SELECT id FROM quote_fifo ORDER BY id DESC LIMIT :limit)")
+    suspend fun trim(limit: Int)
+
+    @Query("DELETE FROM quote_fifo")
+    suspend fun deleteAll()
 }

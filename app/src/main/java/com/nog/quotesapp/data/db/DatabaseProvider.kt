@@ -17,7 +17,7 @@ object DatabaseProvider
                     context.applicationContext,
                     AppDatabase::class.java,
                     "quotes_database"
-                ).build()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
 
             INSTANCE = instance
             instance

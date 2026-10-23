@@ -1,0 +1,30 @@
+{
+  "source": "C:\\Users\\Gabriel\\Downloads\\82fd7bc6-c910-40b2-93c7-b9adc8df77e5_ExportBlock-528438d0-177f-4650-8abe-088bfb2936da\\Frases Legais ea11d648bad6445188bbda2ab4671374.md",
+  "source_sha256": "0027f74dd97ec49dec9e6115dc517cd0f3ec141bf552ff197217a5de692e3d05",
+  "quotes": 299,
+  "tags": 14,
+  "relationships": 228,
+  "untagged": 71,
+  "tag_counts": {
+    "Business": 27,
+    "Evolving": 57,
+    "The king of the world": 10,
+    "Friends": 14,
+    "Love": 10,
+    "Philanthropy": 8,
+    "Society": 28,
+    "Happiness": 7,
+    "Motivation": 8,
+    "Broken yet hopeful": 16,
+    "Passado": 25,
+    "Liberty": 9,
+    "War": 8,
+    "Jokes": 1
+  },
+  "ignored_empty_bullet_lines": [
+    387
+  ],
+  "max_quote_length": 482,
+  "replacement_characters": 0,
+  "policy": "Preserved quote text verbatim, including original quotation marks, spelling and punctuation. Top-level bullet groups became tags. No content deduplication or invented tags."
+}

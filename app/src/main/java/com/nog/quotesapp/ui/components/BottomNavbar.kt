@@ -24,6 +24,10 @@ fun BottomNavbar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                // Keep buttons above system navigation, including three-button mode.
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
+                )
                 .horizontalScroll(rememberScrollState())
                 .padding(8.dp),
 

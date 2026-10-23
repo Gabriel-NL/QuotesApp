@@ -1,69 +1,67 @@
 package com.nog.quotesapp.ui.screens
 
+import com.nog.quotesapp.model.EntryOrder
+import com.nog.quotesapp.ui.components.OrderControls
+import com.nog.quotesapp.model.rankEntries
+import com.nog.quotesapp.model.matchesTags
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.nog.quotesapp.data.db.DatabaseProvider
-import com.nog.quotesapp.data.repository.QuoteRepository
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
+import com.nog.quotesapp.viewmodel.QuotesUiState
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun QuotesScreen(onCreateClick: () -> Unit, onEditClick: (Int) -> Unit) {
-    val context = LocalContext.current.applicationContext
-    val db = remember(context) { DatabaseProvider.getDatabase(context) }
-    val repository = remember(db) { QuoteRepository(db) }
-    val scope = rememberCoroutineScope()
-    var error by remember { mutableStateOf<String?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    val quoteFlow = remember(db) {
-        db.quoteDao().observeAll().onEach { loading = false }.catch {
-            if (it is CancellationException) throw it
-            error = "Could not load quotes."; loading = false
-        }
-    }
-    val tagFlow = remember(db) { db.tagDao().observeAll().catch {
-        if (it is CancellationException) throw it
-        error = "Could not load tags."
-    } }
-    val linkFlow = remember(db) { db.quoteTagCrossRefDao().observeAll().catch {
-        if (it is CancellationException) throw it
-        error = "Could not load tag links."
-    } }
-    val quotes by quoteFlow.collectAsState(initial = emptyList())
-    val tags by tagFlow.collectAsState(initial = emptyList())
-    val links by linkFlow.collectAsState(initial = emptyList())
+fun QuotesScreen(
+    state: QuotesUiState,
+    onDelete: (List<Int>) -> Unit,
+    onCreateClick: () -> Unit,
+    onEditClick: (Int) -> Unit
+) {
+    val quotes = state.quotes
+    val tags = state.tags
+    val links = state.links
+    val error = state.error
+    val loading = state.loading
+    val deleting = state.deleting
     var query by rememberSaveable { mutableStateOf("") }
+    var order by rememberSaveable { mutableStateOf(EntryOrder.ALPHABETIC) }
+    var descending by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    LaunchedEffect(query,order,descending) { listState.scrollToItem(0) }
     var debouncedQuery by remember { mutableStateOf(query) }
     LaunchedEffect(query) { delay(200); debouncedQuery = query }
     var included by rememberSaveable { mutableStateOf(emptyList<Int>()) }
     var excluded by rememberSaveable { mutableStateOf(emptyList<Int>()) }
+    var onlyUntagged by rememberSaveable { mutableStateOf(false) }
     var showTags by rememberSaveable { mutableStateOf(false) }
     var selecting by rememberSaveable { mutableStateOf(false) }
     var selected by rememberSaveable { mutableStateOf(emptyList<Int>()) }
     var pendingDelete by rememberSaveable { mutableStateOf(emptyList<Int>()) }
-    var deleting by remember { mutableStateOf(false) }
+    var handledDeletion by rememberSaveable { mutableStateOf(state.deletedVersion) }
+    LaunchedEffect(state.deletedVersion) {
+        if (state.deletedVersion != handledDeletion) {
+            pendingDelete = emptyList(); selected = emptyList(); selecting = false
+            handledDeletion = state.deletedVersion
+        }
+    }
     BackHandler(enabled = selecting) { selecting = false; selected = emptyList() }
     val existingTags = tags.map { it.id }.toSet()
     val visible = rankEntries(quotes.filter { quote ->
         matchesTags(links.filter { it.quoteId == quote.id }.map { it.tagId }.toSet(),
-            included.toSet().intersect(existingTags), excluded.toSet().intersect(existingTags))
-    }, debouncedQuery) { it.text }
+            included.toSet().intersect(existingTags), excluded.toSet().intersect(existingTags), onlyUntagged)
+    }, debouncedQuery, order, descending) { it.text }
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Quotes", style = MaterialTheme.typography.headlineMedium)
@@ -85,10 +83,15 @@ fun QuotesScreen(onCreateClick: () -> Unit, onEditClick: (Int) -> Unit) {
                 Text("Tags (${included.size + excluded.size})")
             }
         }
+        FilterChip(selected = onlyUntagged, onClick = {
+            onlyUntagged = !onlyUntagged
+            if (onlyUntagged) { included = emptyList(); excluded = emptyList() }
+        }, label = { Text("Untagged") })
+        OrderControls(order,descending,{order=it},{descending=it})
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (loading) CircularProgressIndicator()
         else if (visible.isEmpty()) Text(if (quotes.isEmpty()) "No quotes yet. Create your first quote." else "No quotes match these tag filters.")
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(Modifier.weight(1f), state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(visible, key = { it.id }) { quote ->
                 Card(Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = {
                     if (!selecting) onEditClick(quote.id)
@@ -116,6 +119,7 @@ fun QuotesScreen(onCreateClick: () -> Unit, onEditClick: (Int) -> Unit) {
                     items(tags, key = { it.id }) { tag ->
                         val state = when (tag.id) { in included -> "Include"; in excluded -> "Exclude"; else -> "Any" }
                         TextButton(onClick = {
+                            onlyUntagged = false
                             when (tag.id) {
                                 in included -> { included = included - tag.id; excluded = excluded + tag.id }
                                 in excluded -> excluded = excluded - tag.id
@@ -134,22 +138,14 @@ fun QuotesScreen(onCreateClick: () -> Unit, onEditClick: (Int) -> Unit) {
             }
         },
         confirmButton = { TextButton(onClick = { showTags = false }) { Text("Done") } },
-        dismissButton = { TextButton(onClick = { included = emptyList(); excluded = emptyList() }) { Text("Clear filters") } }
+        dismissButton = { TextButton(onClick = { included = emptyList(); excluded = emptyList(); onlyUntagged = false }) { Text("Clear filters") } }
     )
     if (pendingDelete.isNotEmpty()) AlertDialog(
         onDismissRequest = { if (!deleting) pendingDelete = emptyList() },
         title = { Text("Delete ${pendingDelete.size} quote(s)?") },
         text = { Column { Text("This also removes their tag links and recent history."); error?.let { Text(it) } } },
         confirmButton = { TextButton(enabled = !deleting, onClick = {
-            val ids = pendingDelete.toList(); deleting = true
-            scope.launch {
-                try {
-                    repository.deleteQuotes(ids)
-                    pendingDelete = emptyList(); selected = emptyList(); selecting = false; error = null
-                } catch (cancelled: CancellationException) { throw cancelled }
-                catch (exception: Exception) { error = "Could not delete quotes." }
-                finally { deleting = false }
-            }
+            onDelete(pendingDelete.toList())
         }) { Text(if (deleting) "Deleting..." else "Delete") } },
         dismissButton = { TextButton(enabled = !deleting, onClick = { pendingDelete = emptyList() }) { Text("Cancel") } }
     )

@@ -8,30 +8,30 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.nog.quotesapp.data.db.DatabaseProvider
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.catch
 
-const val MAX_QUOTE_LENGTH = 5000
+import com.nog.quotesapp.model.Tag
+import com.nog.quotesapp.viewmodel.QuoteEditorUiState
+
 
 @Composable
 fun CreateQuoteScreen(
-    onCreate: (String, List<Int>) -> Unit,
-    onBack: () -> Unit,
-    initialText: String = "",
-    initialTagIds: List<Int> = emptyList(),
-    isEditing: Boolean = false,
-    saving: Boolean = false,
-    error: String? = null
+    state: QuoteEditorUiState,
+    onTextChange: (String) -> Unit,
+    onSelectionChange: (List<Int>) -> Unit,
+    onReset: () -> Unit,
+    onSave: () -> Unit,
+    onBack: () -> Unit
 ) {
-    var text by rememberSaveable(initialText) { mutableStateOf(initialText) }
-    var selectedTagIds by rememberSaveable(initialTagIds) { mutableStateOf(initialTagIds) }
+    val text = state.text
+    val selectedTagIds = state.selectedTagIds
+    val saving = state.saving
+    val isEditing = state.isEditing
+    val error = state.error
     var confirmExit by remember { mutableStateOf(false) }
     val requestBack = {
         if (!saving) {
-            if (text != initialText || selectedTagIds.toSet() != initialTagIds.toSet()) confirmExit = true
+            if (state.dirty) confirmExit = true
             else onBack()
         }
     }
@@ -42,51 +42,60 @@ fun CreateQuoteScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .imePadding()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium
-        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineMedium
+            )
 
-        OutlinedTextField(
-            value = text,
-            onValueChange = {
-                text = it.replace("\r", "").replace("\n", " ").take(MAX_QUOTE_LENGTH)
-            },
-            label = { Text("Quote") },
-            enabled = !saving,
-            singleLine = false,
-            minLines = 4,
-            supportingText = { Text("${text.length}/$MAX_QUOTE_LENGTH") },
-            modifier = Modifier.fillMaxWidth()
+            OutlinedTextField(
+                value = text,
+                onValueChange = onTextChange,
+                label = { Text("Quote") },
+                enabled = !saving,
+                singleLine = false,
+                minLines = 4,
+                supportingText = { Text("${text.length}/${state.quoteLimit}") },
+                modifier = Modifier.fillMaxWidth()
 
-        )
+            )
 
-        TagSearchField(
-            selectedTagIds = selectedTagIds,
-            onSelectionChange = { if (!saving) selectedTagIds = it }
-        )
+            TagSearchField(
+                tags = state.tags,
+                loadFailed = state.tagsError != null,
+                enabled = !saving,
+                selectedTagIds = selectedTagIds,
+                onSelectionChange = onSelectionChange
+            )
 
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Button(onClick = { requestBack() }, enabled = !saving) {
                 Text("Back")
             }
 
             Button(
-                onClick = { onCreate(text.trim(), selectedTagIds.toList()) },
-                enabled = text.isNotBlank() && !saving
+                onClick = onSave,
+                enabled = text.isNotBlank() && !saving && (text == state.initialText || text.length <= state.quoteLimit)
             ) {
                 Text(if (saving) "Saving..." else if (isEditing) "Save" else "Create")
             }
 
-            Button(onClick = {
-                text = initialText
-                selectedTagIds = initialTagIds
-            }, enabled = !saving) {
+            Button(onClick = onReset, enabled = !saving) {
                 Text(if (isEditing) "Reset" else "Clear")
             }
         }
@@ -102,20 +111,12 @@ fun CreateQuoteScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TagSearchField(
+    tags: List<Tag>,
+    loadFailed: Boolean,
+    enabled: Boolean,
     selectedTagIds: List<Int>,
     onSelectionChange: (List<Int>) -> Unit
 ) {
-    val context = LocalContext.current.applicationContext
-    val tagDao = remember(context) { DatabaseProvider.getDatabase(context).tagDao() }
-    var loadFailed by remember { mutableStateOf(false) }
-    val tagFlow = remember(tagDao) {
-        tagDao.observeAll().catch { error ->
-            if (error is CancellationException) throw error
-            loadFailed = true
-            emit(emptyList())
-        }
-    }
-    val tags by tagFlow.collectAsState(initial = emptyList())
     var query by rememberSaveable { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     val suggestions = tags.filter {
@@ -124,7 +125,7 @@ private fun TagSearchField(
 
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { expanded = it },
+        onExpandedChange = { if (enabled) expanded = it },
         modifier = Modifier.fillMaxWidth()
     ) {
         OutlinedTextField(
@@ -135,12 +136,13 @@ private fun TagSearchField(
             },
             label = { Text("Search existing tags") },
             singleLine = true,
+            enabled = enabled,
             isError = loadFailed,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier
                 .menuAnchor(
                     type = MenuAnchorType.PrimaryEditable,
-                    enabled = true
+                    enabled = enabled
                 )
                 .fillMaxWidth()
         )
@@ -164,6 +166,7 @@ private fun TagSearchField(
             }
             suggestions.forEach { tag ->
                 DropdownMenuItem(
+                    enabled = enabled,
                     text = { Text(tag.name) },
                     onClick = {
                         onSelectionChange(selectedTagIds + tag.id)
@@ -178,9 +181,10 @@ private fun TagSearchField(
     // The parent passes these selected IDs to the quote creation callback.
     tags.filter { it.id in selectedTagIds }.forEach { tag ->
         InputChip(
+            enabled = enabled,
             selected = true,
             onClick = { onSelectionChange(selectedTagIds - tag.id) },
-            label = { Text("${tag.name} ×") }
+            label = { Text("${tag.name} (remove)") }
         )
     }
 }

@@ -1,41 +1,59 @@
 1. Sistema de frase do dia
-   1.1. A frase exibida no topo do app será selecionada uma vez por dia em horário fixo (meia-noite)
+   1.1. A Home exibe a frase do dia, selecionada uma vez por período diário no horário configurado em Settings; o padrão é meia-noite, no fuso horário atual do aparelho
    1.2. A frase do dia deve ser consistente entre app e widget, usando a mesma fonte de dados
    1.3. O widget será atualizado via background service sempre que a frase do dia mudar ou for reconfigurada manualmente
 
+   1.4. O widget pode ser redimensionado horizontal e verticalmente conforme a grade do launcher, com layout compacto para tamanhos menores
+   1.5. Cada widget permite configurar fundo transparente ou cor personalizada e texto preto ou branco; as escolhas persistem por instância
+   1.6. A configuração abre ao adicionar o widget e pode ser reaberta pelo botão Style ou pela opção de editar do launcher; redimensionar ou mudar a aparência não sorteia outra frase
+   1.6.1. A portabilidade do widget deve respeitar as APIs e os recursos de restauração do Android/launcher; quando houver remapeamento de IDs de widgets, restaurar a aparência por instância correspondente
+   1.6.2. Não prometer transferência de permissões ou da posição/tamanho do widget para launchers que não suportem restauração. A aparência por instância não faz parte do CSV de dados/configurações do app
+
+   1.7. Enviar uma notificação dispensável com a frase do dia uma vez por período diário configurado, usando a mesma frase da Home e do widget
+   1.8. Após descartar a notificação, não recriá-la por reabertura, reinício ou atualização do widget no mesmo período. Permitir nova notificação no próximo período ou após Reroll na Home
+   1.9. Solicitar permissão de notificações quando exigida pelo Android e disponibilizar acesso às permissões em Settings. Sem frase elegível, remover a notificação. Atualizar silenciosamente uma notificação ainda visível se a frase mudar
+   1.10. A notificação é única: utilizar um identificador fixo e substituir seu conteúdo ao fazer Reroll, sem acumular notificações com frases diferentes
+   1.11. Reroll na Home pode recriar uma notificação descartada; Reroll no widget não recria uma notificação descartada no mesmo período
+   1.12. O botão Reroll da Home fica abaixo da frase, nunca ao lado, e atualiza a frase compartilhada com o widget
+   1.13. O agendamento deve ser reavaliado após reinício, mudança de horário/fuso, alteração de configurações e atualização do app; respeitar as permissões e restrições do Android para alarmes e notificações
+
 2. Seleção aleatória de frases
-   2.1. A seleção aleatória deve ocorrer com base em todas as frases disponíveis no banco de dados
-   2.2. Deve existir um cache das últimas frases exibidas para evitar repetição, com tamanho configurável por variável
+   2.1. A seleção aleatória considera todas as frases do banco que passam no filtro de tags da Home/widget definido em 11.11
+   2.2. Deve existir um histórico das últimas frases exibidas para evitar repetição, com tamanho configurável em Settings
    2.2.1. Se o tamanho do cache for maior ou igual ao número de frases disponíveis, o sistema deve ajustar automaticamente para entryCount - 1
-   2.2.2. Se não existirem frases (entryCount = 0), o sistema não deve funcionar e a UI deve indicar estado vazio com aparência desativada (acinzentada)
+   2.2.2. entryCount corresponde à quantidade de frases elegíveis. Se for zero, não sortear; mostrar estado vazio, desativar Reroll e remover a notificação da frase
    2.3. A lista de frases deve ser carregada do banco de dados para a memória RAM no início do app
 
 3. Sistema de busca
    3.1. A busca será composta por três etapas sequenciais
-   3.1.1. Primeira etapa: correspondência por frase exata. Resultados devem ser exibidos em ordem alfabética
-   3.1.2. Segunda etapa: correspondência por palavras individuais contidas na busca. Também ordenada alfabeticamente
-   3.1.3. Terceira etapa: demais resultados que não se encaixam nas etapas anteriores, também ordenados alfabeticamente
+   3.1.1. Primeira etapa: correspondência pelo trecho completo digitado, sem distinção entre maiúsculas/minúsculas
+   3.1.2. Segunda etapa: correspondência por pelo menos uma palavra individual da busca, sem repetir itens da primeira etapa
+   3.1.3. Terceira etapa: demais resultados que não se encaixam nas etapas anteriores
    3.1.4. A exibição final concatena as três etapas na ordem definida acima
    3.1.5. O sistema deve reordenar os resultados a cada alteração no texto da barra de busca (qualquer input, delete, paste ou modificação)
-   3.1.6. A lista de exibição não remove dados, apenas oculta itens que não atendem ao filtro atual
+   3.1.6. A busca textual reordena os itens sem excluir resultados; filtros de tags podem ocultar itens na UI, sem apagar dados
    3.2. A estrutura de regras de busca deve ser modular para permitir alteração futura das regras de prioridade
    3.3. Deve existir debounce na entrada de texto para evitar execução excessiva da lógica de busca
    3.4. A lista completa permanece carregada na RAM, e apenas a UI aplica filtros visuais
+   3.5. Ao alterar qualquer valor na busca da Home ou de Quotes (digitar, apagar, colar ou limpar), a lista volta imediatamente ao topo, sem animação e sem aguardar o debounce
+   3.6. Quotes e Tags possuem botão Order by com opções Alfabético e Quantidade de caracteres, além de alternância Crescente/Decrescente
+   3.6.1. A ordenação escolhida vale dentro de cada etapa de relevância da busca; não inverter a prioridade das etapas. Na Home, manter a ordenação alfabética padrão
+   3.6.2. Quantidade de caracteres considera pontos de código Unicode, incluindo espaços e pontuação; em empate, usar ordem alfabética
+   3.6.3. Alterar ordenação/direção volta a lista ao topo; preservar a escolha ao restaurar o estado da tela, sem modificar o banco de dados
 
 4. Estrutura de exibição de frases
    4.1. Cada frase será exibida como um label em uma lista scrollável
-   4.1.1. Se o texto exceder a largura disponível, ele não deve quebrar linha, devendo ser truncado com reticências (...)
-   4.1.2. O comportamento de truncamento deve ser substituível no futuro
+   4.1.1. Se o texto exceder a largura disponível na linha, ele não deve quebrar linha; a renderização calcula o espaço real disponível e exibe reticências apenas visualmente, sem alterar o texto salvo
    4.2. Ao segurar um item da lista, o usuário será redirecionado para a tela de edição da frase correspondente, usando o ID da frase
    4.3. O layout de cada item não pode ser clicável para seleção múltipla por padrão (exceto em modo específico de gerenciamento)
 
 5. Tela de criação e edição de frases (CreateQuoteScreen)
    5.0. A tela é dedicada a frases; a criação e edição de tags utiliza popup na tela de gerenciamento de tags
    5.0.1. O contexto recebido informa, opcionalmente, o ID da frase; o título indica “Criar frase” ou “Editar frase” conforme o contexto
-   5.1. O campo de texto possui limite de caracteres definido por constante
+   5.1. O campo de texto possui limite de caracteres configurável na seção 11, com valor padrão definido internamente
    5.1.1. Se a tela for aberta sem ID, o campo inicia vazio (modo criação)
    5.1.2. Se a tela for aberta com ID, o campo carrega o texto da frase correspondente no banco de dados
-   5.2. A tela possui três botões na parte inferior
+   5.2. A tela possui três botões fixos na parte inferior da área visível, acima do teclado quando aberto; os campos possuem rolagem independente dos botões
    5.2.1. Botão “voltar” retorna à tela anterior
    5.2.2. Botão “criar/salvar” muda dinamicamente: “criar” se não houver ID, “salvar” se houver ID
    5.2.3. Botão “limpar/resetar” muda dinamicamente: limpa campo no modo criação ou restaura versão original do banco no modo edição
@@ -43,13 +61,18 @@
    5.2.5. Caso o usuário tente sair com alterações não salvas, deve ser exibido aviso de confirmação
    5.3. A tela de frases possui um controle para selecionar tags existentes
    5.3.1. Ao abrir a tela com ID, as tags associadas são carregadas e exibidas como ativas
-   5.3.2. Tags ativas são exibidas em verde, tags inativas em cor padrão
+   5.3.2. A busca de tags existentes consulta os dados do app e exibe até três sugestões em popup abaixo do campo, sem empurrar o restante da tela; o campo continua editável enquanto as sugestões aparecem
+   5.3.3. Permitir adicionar e remover tags da seleção antes de salvar, sem duplicar associações
+   5.4. O campo da frase deve ser alto, com quebra visual de palavras para leitura do texto completo, sem exigir quebras de linha manuais
+   5.5. Criar/Salvar persiste a frase e suas associações de tags na mesma transação; falha preserva o rascunho e não deixa registros parciais
+   5.6. Após criar/salvar com sucesso, retornar à lista de frases e atualizar os dados exibidos; não mostrar frases fictícias desconectadas do banco
 
 6. Navegação
    6.1. O app possui uma navbar com acesso às telas:
    6.1.1. Página inicial (quote do dia + busca)
    6.1.2. Lista de frases
    6.1.3. Gerenciamento de tags
+   6.1.4. Configurações
    6.2. A tela de criação e edição de frases não possui navbar nem botão próprio na navbar; ela é acessada pelas ações de criar ou editar frases. Criar e editar tags abre um popup sobre a lista de tags
 
 7. Tela de lista de frases
@@ -73,6 +96,11 @@
    7.3.2.1. Tags verdes filtram para mostrar apenas frases que contêm essas tags
    7.3.2.2. Tags vermelhas removem frases que contenham essas tags
    7.3.2.3. O filtro final aplica inclusão primeiro e depois exclusão
+   7.3.2.4. Todas as tags incluídas devem estar presentes na frase; qualquer tag excluída impede sua exibição. Oferecer limpeza dos filtros
+   7.3.3. O botão Tags acompanha a altura do campo de busca ao lado
+   7.4. Oferecer filtro Untagged para mostrar somente frases sem associações com tags
+   7.4.1. Ativar Untagged limpa inclusão/exclusão de tags; selecionar uma tag desativa Untagged. Limpar filtros também desativa Untagged
+   7.5. Oferecer os controles de ordenação descritos em 3.6, combinados com a busca textual e os filtros de tags
 
 8. Gerenciamento de tags
    8.1. O botão de criar tag abre um popup com campo de nome vazio; a ação de editar abre o mesmo popup com o nome da tag correspondente, identificada por ID
@@ -81,13 +109,122 @@
    8.2. A tela possui estrutura semelhante à lista de frases, adaptada para entidades de tags
    8.3. O popup possui Criar/Salvar e Cancelar; alterações só são persistidas ao confirmar. Após salvar com sucesso, o popup fecha e a lista reflete os dados atualizados do banco de dados
    8.4. Tags possuem nome e ID, sem configuração de cor personalizada
+   8.5. A lista reflete as tags do banco, com busca e ordenação conforme a seção 3
+   8.6. Permitir excluir uma tag ou várias tags por checkboxes, sempre com confirmação; cancelar o modo limpa a seleção
+   8.7. Excluir tags remove suas associações, preservando as frases; renomear preserva o ID e os relacionamentos
 
 9. Estrutura de banco de dados
-   9.1. Tabela de frases: id (primary key), phrase (string)
-   9.2. Tabela de tags: id (primary key), tag (string)
-   9.3. Tabela de relacionamento: id (primary key), phrase_id (foreign key), tag_id (foreign key)
+   9.1. Banco local Room/SQLite, com migrações que preservam os dados existentes
+   9.2. Tabela quotes: id (chave primária) e text (texto da frase)
+   9.3. Tabela tags: id (chave primária) e name (nome da tag)
+   9.4. Tabela quote_tags_cross_ref: quoteId e tagId, com chave primária composta e referências às frases e tags; não duplicar pares
+   9.5. Tabela quote_fifo: id, quoteId e insertedAt, para o histórico antirrepetição
+   9.6. Tabela daily_quote: registro único com id = 1, quoteId opcional e localDate, representando a frase do período diário
+   9.7. Tabela app_settings: key, valueType e value, para configurações persistentes
+   9.8. Os nomes das colunas do banco e os campos do CSV possuem mapeamento explícito; não confundir o formato de exportação com o esquema físico do banco
 
 10. Plataforma e arquitetura
     10.1. O app será desenvolvido em Android Studio utilizando Kotlin e Jetpack Compose
     10.2. O código será organizado em arquivos e classes separados por responsabilidade (UI, lógica, dados)
     10.3. A arquitetura deve permitir expansão futura sem acoplamento direto entre UI e banco de dados
+    10.4. O app utiliza orientação retrato
+    10.5. Respeitar a largura real disponível e os espaços reservados às barras do Android; nenhum controle pode ficar sob os botões de navegação ou recortes da tela
+    10.6. A área reservada às barras do sistema acompanha as cores do tema do app, mantendo contraste dos ícones nos modos claro e escuro
+    10.7. O nome de exibição do app é Random Quotes App; o APK pode receber sufixo de versão para identificar a entrega
+
+11. Configurações e importação/exportação CSV
+   11.1. O app possui tela de configurações acessível via navbar; configurações são persistentes e restauradas ao reabrir o app
+   11.1.1. Organizar Settings em seções expansíveis. Todas podem ficar fechadas; abrir uma fecha a anterior, e tocar na seção aberta a fecha
+   11.1.2. Fechar uma seção não apaga seus valores ou rascunhos; manter ações de salvar/confirmar quando exigidas. O filtro de tags de 11.11 salva automaticamente
+
+   11.2. Horário da frase do dia
+   11.2.1. O usuário pode definir o horário diário; o padrão é 00:00, utilizando o fuso horário atual do aparelho
+   11.2.2. Alterar o horário reagenda imediatamente a próxima atualização futura e mantém a frase atual até essa atualização ou um reroll manual
+   11.2.3. Mudanças de fuso horário e reinício do aparelho devem recalcular o agendamento; o app informa quando as restrições do Android impedirem garantir o horário exato em segundo plano
+
+   11.3. Armazenamento e local de exportação
+   11.3.1. O banco de dados de trabalho permanece no armazenamento interno do app
+   11.3.2. O usuário pode escolher uma pasta para cópias/exportações através do seletor de arquivos do Android; a pasta não precisa estar vazia
+   11.3.3. O app mantém o acesso à pasta quando permitido pelo sistema; cancelamento, acesso revogado ou pasta indisponível não podem alterar ou apagar o banco interno
+   11.3.4. Não sobrescrever arquivos existentes silenciosamente; solicitar confirmação ou permitir outro nome
+   11.3.5. Ao trocar a pasta, avaliar somente seus arquivos diretos, sem entrar em subpastas; reconhecer backups pelo conteúdo aprovado pelo validador CSV do app, não apenas pela extensão
+   11.3.6. Mover somente backups válidos: criar cópia temporária interna, copiar para o novo destino, conferir o conteúdo copiado e verificar que o original não mudou antes de apagar o original
+   11.3.7. Em colisão de nomes, usar um nome disponível sem sobrescrever arquivos. Preservar arquivos inválidos e subpastas da origem
+   11.3.8. Falhas preservam o original e são informadas; uma falha ao apagar a origem pode deixar cópias nas duas pastas. Informar quantidades movidas, ignoradas e mantidas por falha
+   11.3.9. Remover a cópia temporária após cada tentativa; se a pasta antiga não puder ser acessada/listada, não alterar a pasta configurada. Cancelar o seletor não move arquivos
+
+   11.4. Histórico e limites
+   11.4.1. O usuário pode alterar o tamanho do histórico antirrepetição; zero desativa a proteção e o tamanho efetivo continua limitado a entryCount - 1, nunca negativo
+   11.4.2. Reduzir o histórico descarta primeiro os registros mais antigos; aumentar o tamanho preserva o histórico disponível
+   11.4.3. Limpar o histórico exige confirmação e mantém a frase do dia atual
+   11.4.4. O usuário pode alterar os limites de caracteres de frases e nomes de tags; os valores devem ser inteiros positivos dentro de limites internos definidos
+   11.4.5. Reduzir um limite não trunca nem apaga registros existentes. O novo limite vale para novas entradas e texto alterado; entradas antigas mais longas podem continuar armazenadas
+   11.4.6. Valores padrão e limites permitidos são definidos internamente; opções inválidas não são salvas e apresentam mensagem explicativa
+
+   11.5. Escopo de importação/exportação
+   11.5.1. O formato suportado é somente CSV; não haverá uma opção de exportação JSON
+   11.5.2. Exportação completa: um único arquivo contém uma cópia de todos os registros de negócio, histórico, estado da frase do dia e configurações salvas
+   11.5.3. Exportação seletiva: o usuário escolhe grupos de dados, como frases, tags, relacionamentos, histórico, frase do dia e configurações; os grupos escolhidos também podem compartilhar um único arquivo
+   11.5.4. Frases e tags são tabelas do banco atual, não necessariamente bancos separados. Se houver outros bancos de negócio no futuro, eles precisam ser registrados no formato de exportação com origem e mapeamento explícitos
+   11.5.5. Arquivos completos ou seletivos utilizam o mesmo formato; uma importação pode aplicar todos os grupos presentes ou apenas os grupos selecionados
+   11.5.6. Exportar apenas frases não exige incluir tags. Oferecer uma opção explícita para incluir também suas tags e relacionamentos
+   11.5.7. Relacionamentos, histórico e frase do dia dependem das frases/tags referenciadas. Antes de exportar, oferecer incluir as dependências necessárias ou cancelar esses grupos; não produzir referências quebradas
+   11.5.8. Tags sem associação também são incluídas ao exportar todas as tags
+   11.5.9. Metadados internos do SQLite/Room, índices, contadores automáticos e permissões do Android não são registros de negócio e não são exportados como entradas
+
+   11.6. Formato CSV fixo e identificação dos registros
+   11.6.1. Utilizar UTF-8, cabeçalho obrigatório e ponto e vírgula (;) como delimitador fixo, definido por constante interna e não configurável pelo usuário
+   11.6.2. Cada linha representa um registro identificado por record_type; o tipo determina o destino e os campos obrigatórios. Não identificar registros pela posição das linhas no arquivo
+   11.6.3. Cabeçalho da versão inicial: record_type;id;quote_id;tag_id;text;name;inserted_at;local_date;key;value_type;value
+   11.6.4. Tipos de registro previstos: metadata, dataset, quote, tag, quote_tag, quote_history, daily_quote e setting
+   11.6.5. metadata informa format_version e database_schema_version; cada dataset identifica um grupo incluído e sua contagem, inclusive zero. Grupo ausente é diferente de grupo presente e vazio
+   11.6.6. quote utiliza id e text; tag utiliza id e name; quote_tag utiliza quote_id e tag_id; quote_history utiliza id, quote_id e inserted_at; daily_quote utiliza id, quote_id opcional e local_date
+   11.6.7. setting utiliza key, value_type e value; value_type identifica string, integer ou boolean. Os nomes das chaves e sua interpretação devem ser definidos em um registro interno de configurações
+   11.6.8. Os campos não aplicáveis ao tipo ficam vazios. IDs e horários numéricos utilizam representação decimal; inserted_at é o instante em milissegundos desde a época Unix; local_date utiliza AAAA-MM-DD
+   11.6.9. Delimitadores, aspas, acentos e quebras de linha presentes nos dados são preservados por escape CSV: campos especiais entre aspas duplas e aspas internas duplicadas. Não reservar ou proibir caracteres no conteúdo do usuário
+   11.6.10. Frases, tags e associações ocupam linhas próprias; a lista de tags não fica embutida no texto da frase nem exige JSON dentro do CSV
+   11.6.11. A versão do formato CSV é independente da versão do app e da versão do banco; importadores devem reconhecer versões suportadas e rejeitar versões incompatíveis com mensagem clara
+
+   11.7. Exportação consistente
+   11.7.1. A exportação não modifica os registros originais; capturar uma visão consistente dos grupos selecionados para evitar misturar dados de momentos diferentes
+   11.7.2. O arquivo deve identificar todos os campos necessários para restaurar os registros e suas associações; não exportar apenas os textos visíveis nas listas
+   11.7.3. Exibir resumo dos grupos e quantidades exportados e informar falhas. Arquivo incompleto não deve ser apresentado como uma exportação concluída
+   11.7.4. As caixas de exportação ficam lado a lado e quebram automaticamente para a linha seguinte quando faltar espaço, respeitando a largura disponível (FlowRow)
+   11.7.5. Oferecer botão Check all / Uncheck all para marcar ou desmarcar todas as caixas da seção, incluindo grupos de dados, dependências e inclusão de tags/relacionamentos
+
+   11.8. Importação de dados de negócio
+   11.8.1. Oferecer os modos Adicionar/Mesclar e Substituir para os grupos de dados de negócio selecionados
+   11.8.2. Ler e validar o arquivo completo antes de alterar registros: cabeçalho, versão, tipos, campos obrigatórios, IDs repetidos, valores, limites aplicáveis e referências
+   11.8.3. Exibir resumo dos registros a adicionar, mesclar, substituir ou rejeitar; substituição exige confirmação explícita
+   11.8.4. Substituição apaga apenas os grupos selecionados, dentro da mesma transação que insere os dados validados. Grupos não selecionados são preservados; se uma dependência obrigar afetá-los, explicar o impacto e exigir seleção/confirmação correspondente ou impedir a operação
+   11.8.5. Nunca apagar o banco atual antes de validar o arquivo. Falha durante a aplicação deve reverter o lote, preservando o estado anterior
+   11.8.6. Ao adicionar, frases duplicadas são identificadas por texto com espaços externos removidos e comparação sem distinção entre maiúsculas/minúsculas; pontuação e acentos são preservados e continuam significativos
+   11.8.7. Ao mesclar uma frase já existente, manter seu ID e unir as associações de tags, sem duplicar pares frase/tag nem remover associações existentes
+   11.8.8. Tags equivalentes são identificadas pelo nome com a mesma normalização de espaços externos e maiúsculas/minúsculas. Se o destino possuir múltiplas correspondências ambíguas, não escolher uma silenciosamente; informar o conflito e impedir o lote até sua resolução
+   11.8.9. IDs do arquivo identificam registros dentro da exportação; não devem sobrescrever registros do destino só porque o número coincide. Construir um mapeamento de IDs importados para IDs locais e aplicá-lo a todas as relações, histórico e estado diário
+   11.8.10. Dependências devem ser incluídas no lote ou resolvidas explicitamente; nunca associar registros de origens diferentes apenas por coincidência de ID
+   11.8.11. Histórico e frase do dia são estados singulares da coleção: sua importação utiliza substituição, não mescla. Após aplicar, validar referências, ajustar o histórico ao tamanho efetivo e atualizar o agendamento/widget
+   11.8.12. Um estado diário de outro período/fuso horário é preservado como dado validado no arquivo, mas o estado ativo deve ser recalculado conforme o período diário local atual
+
+   11.9. Importação/exportação de configurações
+   11.9.1. Configurações podem ser exportadas sozinhas ou junto dos dados de negócio
+   11.9.2. Configurações importadas utilizam somente substituição dos valores das chaves selecionadas; não existe modo Adicionar/Mesclar para configurações
+   11.9.3. Chaves ausentes ou não selecionadas permanecem inalteradas. Redefinir todas as configurações continua sendo uma ação separada
+   11.9.4. Validar tipos e limites antes de substituir; chaves desconhecidas ou incompatíveis devem ser informadas no resumo e não aplicadas silenciosamente
+   11.9.5. Quando dados e configurações forem importados juntos, validar limites utilizando a configuração resultante do lote. A aplicação do lote selecionado deve ser atômica e recuperável, incluindo configurações
+   11.9.6. Caminhos/URIs exportados são referências, não permissões transferíveis. Uma pasta não acessível no aparelho de destino exige nova seleção pelo usuário antes de ser ativada
+   11.9.7. Depois de importar configurações, reagendar atualizações e refletir os valores na UI e nos widgets; manter a frase atual, salvo substituição explícita do estado diário, mudança de período ou bloqueio pelo filtro de tags resultante
+
+   11.10. Redefinir configurações
+   11.10.1. Restaurar padrões exige confirmação e altera somente configurações, sem apagar frases, tags ou relacionamentos
+   11.10.2. Os efeitos dos padrões restaurados seguem as regras normais de alteração de horário, histórico e limites, sem truncar conteúdo existente
+
+   11.11. Filtro de tags para Home e widget
+   11.11.1. Exibir uma seção expansível com busca de tags, até três sugestões, tags selecionadas removíveis, alternância blacklist/whitelist e botão para limpar todas as tags selecionadas
+   11.11.2. Blacklist exclui frases com qualquer tag selecionada; whitelist permite frases com pelo menos uma tag selecionada. Lista vazia permite todas as frases nos dois modos
+   11.11.3. Aplicar à lista da Home e ao sorteio da frase compartilhada com o widget, sem alterar os filtros da tela Quotes. Frases sem tag passam na blacklist e não passam numa whitelist não vazia
+   11.11.4. Salvar automaticamente. Manter a frase atual se permitida; substituir se bloqueada. Sem candidatas, mostrar estado vazio e desativar reroll
+   11.11.5. Incluir o filtro no CSV de configurações por nomes de tags, independente dos IDs de outro aparelho; acompanhar renomeações e permitir remover seleções de tags apagadas
+
+12. Proposta em avaliação
+   12.1. Avaliar um botão com ícone de relógio e seletor visual para definir o horário em Settings, como alternativa à digitação HH:mm. Esta sugestão não representa confirmação de implementação

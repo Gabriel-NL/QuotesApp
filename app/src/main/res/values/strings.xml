@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Random Quotes App</string>
+    <string name="widget_title">Quote of the day</string>
+    <string name="widget_loading">Loading your quote...</string>
+    <string name="widget_reroll">Reroll</string>
+    <string name="widget_settings">Style</string>
 </resources>

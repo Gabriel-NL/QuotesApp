@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp" android:minHeight="160dp"
+    android:minResizeWidth="110dp" android:minResizeHeight="80dp"
+    android:configure="com.nog.quotesapp.widget.WidgetSettingsActivity"
+    android:widgetFeatures="reconfigurable"
+    android:initialLayout="@layout/quote_widget" android:previewLayout="@layout/quote_widget"
+    android:resizeMode="horizontal|vertical" android:widgetCategory="home_screen"
+    android:updatePeriodMillis="1800000" />
